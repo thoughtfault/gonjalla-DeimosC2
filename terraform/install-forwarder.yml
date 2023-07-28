@@ -1,0 +1,32 @@
+- name: Install c2 forwarders
+  hosts: all
+  remote_user: root
+  tasks:
+    - name: Install socat
+      ansible.builtin.apt:
+        name: socat
+        state: present
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Copy service script
+      ansible.builtin.copy:
+        src: files/forwarder.sh
+        dest: /opt/forwarder.sh
+        mode: '0755'
+
+    - name: Copy service file
+      ansible.builtin.template:
+        src: files/forwarder.service.j2
+        dest: /etc/systemd/system/forwarder.service
+        mode: '0644'
+      notify:
+        - Enable forwarder
+
+  handlers:
+    - name: Enable forwarder
+      ansible.builtin.service:
+        name: forwarder
+        state: restarted
+        enabled: yes
+        daemon_reload: yes

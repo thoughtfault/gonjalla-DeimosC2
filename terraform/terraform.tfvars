@@ -1,0 +1,7 @@
+domain_name                     = "myverybaddomain.com"
+key_name                        = "mykey"
+operator_ip                     = ""x.x.x.x"
+teamserver_instance_type        = "njalla1"
+teamserver_os                   = "ubuntu2004"
+forwarder_instance_type         = "njalla1"
+forwarder_os                    = "ubuntu2004"

@@ -1,0 +1,92 @@
+- name: Install DeimosC2 teamserver
+  hosts: all
+  remote_user: root
+  tasks:
+    - name: Install packages
+      ansible.builtin.apt:
+        name:
+          - unzip
+          - python3-pip
+        state: present
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Allow management traffic from operator IP
+      community.general.ufw:
+        rule: allow
+        port: '{{ item }}'
+        proto: tcp
+        src: '{{ operator_ip }}'
+      loop:
+        - 22
+        - 8443
+      notify:
+        - Enable ufw
+
+    - name: Deny management traffic from everywhere
+      community.general.ufw:
+        rule: deny
+        port: '{{ item }}'
+        proto: tcp
+        src: '0.0.0.0/0'
+      loop:
+        - 22
+        - 8443
+      notify:
+        - Enable ufw
+
+    - name: Allow C2 traffic
+      community.general.ufw:
+        rule: allow
+        port: '{{ item }}'
+        src: '0.0.0.0/0'
+      loop:
+        - 443
+        - 4443
+        - 4444
+      notify:
+        - Enable ufw
+
+    - name: Get link for latest release of DeimosC2
+      ansible.builtin.uri:
+        url: https://api.github.com/repos/DeimosC2/DeimosC2/releases/latest
+        return_content: true
+      register: json_response
+
+    - name: Get latest release of DeimosC2
+      ansible.builtin.unarchive:
+        src: "{{ json_response.json.assets[1].browser_download_url}}"
+        dest: /opt/
+        remote_src: yes
+      args:
+        creates: /opt/DeimosC2
+
+    - name: Install requirements.txt (bultin.pip broken)
+      shell:
+        "pip3 install -r /opt/requirements.txt"
+
+    - name: Copy service script
+      ansible.builtin.copy:
+        src: files/DeimosC2.sh
+        dest: /opt/DeimosC2.sh
+        mode: '0755'
+
+    - name: Copy service file
+      ansible.builtin.copy:
+        src: files/DeimosC2.service
+        dest: /etc/systemd/system
+        mode: '0644'
+      notify:
+        - Enable DeimosC2
+
+  handlers:
+    - name: Enable ufw
+      community.general.ufw:
+        state: enabled
+
+    - name: Enable DeimosC2
+      ansible.builtin.service:
+        name: DeimosC2
+        state: restarted
+        enabled: yes
+        daemon_reload: yes
